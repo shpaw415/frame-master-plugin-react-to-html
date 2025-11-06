@@ -159,10 +159,7 @@ export default function reactToHtmlPlugin(
               );
               build.onLoad(
                 {
-                  filter: pluginRegex({
-                    path: [cwd, srcDir],
-                    ext: ["tsx", "jsx"],
-                  }),
+                  filter: /.*/,
                   namespace: "react-to-html",
                 },
                 async (args) => {

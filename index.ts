@@ -5,8 +5,9 @@ import { renderToString } from "react-dom/server";
 import { builder } from "frame-master/build";
 import { join } from "path";
 import { cp, mkdir } from "fs/promises";
-import { randomUUIDv7, type MatchedRoute } from "bun";
+import { type MatchedRoute } from "bun";
 import { join as clientJoin } from "frame-master/utils";
+import PrettifyHTML from "html-prettify";
 
 export type ReactToHtmlPluginOptions = {
   /** default: ".frame-master/build" */
@@ -194,7 +195,10 @@ export default function reactToHtmlPlugin(
                     Shell({ children: PageWrappedInLayouts })
                   );
                   return {
-                    contents: strContent,
+                    contents:
+                      process.env.NODE_ENV == "production"
+                        ? strContent
+                        : PrettifyHTML(strContent),
                     loader: "html",
                   };
                 }

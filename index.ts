@@ -138,21 +138,6 @@ export default function reactToHtmlPlugin(
             setup(build) {
               build.onLoad(
                 {
-                  filter: /\.css$/,
-                },
-                async (args) => {
-                  console.log("Loading CSS:", args.path);
-                  return {
-                    contents:
-                      (await Bun.file(args.path).text()) +
-                      `\n#${randomUUIDv7().replaceAll("-", "")} {}`,
-                    loader: "css",
-                  };
-                }
-              );
-
-              build.onLoad(
-                {
                   filter: pluginRegex({
                     path: [cwd, srcDir],
                     ext: ["tsx", "jsx"],

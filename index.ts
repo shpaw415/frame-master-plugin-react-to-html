@@ -151,7 +151,6 @@ export default function reactToHtmlPlugin(
                   filter: /.*\?entrypoint=true$/,
                 },
                 (args) => {
-                  console.log("Resolving entrypoint:", args.path);
                   return {
                     path: args.path.split("?entrypoint=true").shift()!,
                     namespace: "src-page",
@@ -209,8 +208,19 @@ export default function reactToHtmlPlugin(
           },
         ],
       }),
-      async afterBuild() {
+      async afterBuild(_, result) {
         fileRouter = createFileRouter();
+
+        const prettier = (await import("simply-beautiful" as string)) as {
+          html: (content: string) => string;
+        };
+        await Promise.all(
+          result.outputs
+            .filter((out) => out.path.endsWith(".html"))
+            .map(async (file) =>
+              Bun.write(Bun.file(file.path), prettier.html(await file.text()))
+            )
+        );
       },
     },
     serverStart: {

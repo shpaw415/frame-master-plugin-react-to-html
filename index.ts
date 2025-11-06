@@ -136,6 +136,12 @@ export default function reactToHtmlPlugin(
           {
             name: "react-to-html-transformer",
             setup(build) {
+              build.onLoad({ filter: /\.css$/ }, async (args) => {
+                return {
+                  contents: await Bun.file(args.path).text(),
+                  loader: "file",
+                };
+              });
               build.onLoad(
                 {
                   filter: pluginRegex({

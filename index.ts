@@ -5,7 +5,7 @@ import { renderToString } from "react-dom/server";
 import { builder } from "frame-master/build";
 import { join } from "path";
 import { cp, mkdir } from "fs/promises";
-import type { MatchedRoute } from "bun";
+import { randomUUIDv7, type MatchedRoute } from "bun";
 import { join as clientJoin } from "frame-master/utils";
 
 export type ReactToHtmlPluginOptions = {
@@ -141,9 +141,12 @@ export default function reactToHtmlPlugin(
                   filter: /\.css$/,
                 },
                 async (args) => {
+                  console.log("Loading CSS:", args.path);
                   return {
-                    contents: args.path,
-                    loader: "text",
+                    contents:
+                      (await Bun.file(args.path).text()) +
+                      `\n#${randomUUIDv7().replaceAll("-", "")} {}`,
+                    loader: "css",
                   };
                 }
               );

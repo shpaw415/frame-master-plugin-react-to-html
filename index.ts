@@ -4,9 +4,9 @@ import { type JSX } from "react";
 import { renderToString } from "react-dom/server";
 import { builder } from "frame-master/build";
 import { join } from "path";
-import { type MatchedRoute } from "bun";
+import { cp, mkdir } from "fs/promises";
+import { randomUUIDv7, type MatchedRoute } from "bun";
 import { join as clientJoin } from "frame-master/utils";
-import packageJson from "./package.json";
 
 export type ReactToHtmlPluginOptions = {
   /** default: ".frame-master/build" */
@@ -74,7 +74,7 @@ export default function reactToHtmlPlugin(
 ): FrameMasterPlugin {
   const {
     srcDir = join("src/pages"),
-    outDir = ".frame-master/build",
+    outDir = join(".frame-master/build"),
     shellPath,
   } = _props;
 
@@ -120,13 +120,22 @@ export default function reactToHtmlPlugin(
 
   return {
     name: "react-to-static-html",
-    version: packageJson.version,
+    version: "1.0.0",
     build: {
       buildConfig: () => ({
-        entrypoints: [...Object.values(srcFileRouter.routes)],
+        entrypoints: [
+          ...Object.values(srcFileRouter.routes)
+            .filter(
+              (filePath) =>
+                !filePath.endsWith("layout.tsx") &&
+                !filePath.endsWith("layout.jsx")
+            )
+            .map(
+              (filePath) => filePath.split(srcDir).pop()! + "?entrypoint=true"
+            ),
+        ],
         throw: false,
         outdir: outDir,
-        publicPath: "./",
         plugins: [
           {
             name: "react-to-html-transformer",
@@ -139,36 +148,29 @@ export default function reactToHtmlPlugin(
               });
               build.onResolve(
                 {
-                  filter: pluginRegex({
-                    path: [cwd, srcDir],
-                    ext: ["tsx", "jsx"],
-                  }),
+                  filter: /.*\?entrypoint=true$/,
                 },
                 (args) => {
-                  if (
-                    args.path?.endsWith("layout.tsx") ||
-                    args.path?.endsWith("layout.jsx")
-                  ) {
-                    return undefined;
-                  }
+                  console.log("Resolving entrypoint:", args.path);
                   return {
-                    path: args.path.split(srcDir).pop()!,
-                    namespace: "react-to-html",
+                    path: args.path.split("?entrypoint=true").shift()!,
+                    namespace: "src-page",
                   };
                 }
               );
               build.onLoad(
                 {
                   filter: /.*/,
-                  namespace: "react-to-html",
+                  namespace: "src-page",
                 },
                 async (args) => {
+                  const realPath = join(cwd, srcDir, args.path);
                   const pageComponent = (
-                    await import(toDevImportPath(join(cwd, srcDir, args.path)))
+                    await import(toDevImportPath(realPath))
                   ).default as () => JSX.Element;
 
                   const pathname = Object.entries(srcFileRouter.routes)
-                    .find(([pathname, filePath]) => filePath == args.path)
+                    .find(([pathname, filePath]) => filePath == realPath)
                     ?.at(0)!;
 
                   const layouts = (
@@ -197,13 +199,8 @@ export default function reactToHtmlPlugin(
                   const strContent = renderToString(
                     Shell({ children: PageWrappedInLayouts })
                   );
-                  const beautify = require("simply-beautiful");
-
                   return {
-                    contents:
-                      process.env.NODE_ENV == "production"
-                        ? strContent
-                        : beautify.html(strContent),
+                    contents: strContent,
                     loader: "html",
                   };
                 }

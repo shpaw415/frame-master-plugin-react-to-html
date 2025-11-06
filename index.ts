@@ -80,7 +80,6 @@ export default function reactToHtmlPlugin(
   } = _props;
 
   const cwd = process.cwd();
-  const beautify = require("simply-beautiful");
 
   const srcFileRouter = new Bun.FileSystemRouter({
     dir: join(cwd, srcDir),
@@ -191,6 +190,8 @@ export default function reactToHtmlPlugin(
                   const strContent = renderToString(
                     Shell({ children: PageWrappedInLayouts })
                   );
+                  const beautify = require("simply-beautiful");
+
                   return {
                     contents:
                       process.env.NODE_ENV == "production"

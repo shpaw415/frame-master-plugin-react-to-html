@@ -1,12 +1,11 @@
 import type { FrameMasterPlugin } from "frame-master/plugin";
-import { pluginRegex } from "frame-master/utils";
 import { type JSX } from "react";
 import { renderToString } from "react-dom/server";
 import { builder } from "frame-master/build";
 import { join } from "path";
-import { cp, mkdir } from "fs/promises";
-import { randomUUIDv7, type MatchedRoute } from "bun";
+import { type MatchedRoute } from "bun";
 import { join as clientJoin } from "frame-master/utils";
+import packageJson from "./package.json";
 
 export type ReactToHtmlPluginOptions = {
   /** default: ".frame-master/build" */
@@ -120,7 +119,7 @@ export default function reactToHtmlPlugin(
 
   return {
     name: "react-to-static-html",
-    version: "1.0.0",
+    version: packageJson.version,
     build: {
       buildConfig: () => ({
         entrypoints: [
@@ -210,17 +209,6 @@ export default function reactToHtmlPlugin(
       }),
       async afterBuild(_, result) {
         fileRouter = createFileRouter();
-
-        const prettier = (await import("simply-beautiful" as string)) as {
-          html: (content: string) => string;
-        };
-        await Promise.all(
-          result.outputs
-            .filter((out) => out.path.endsWith(".html"))
-            .map(async (file) =>
-              Bun.write(Bun.file(file.path), prettier.html(await file.text()))
-            )
-        );
       },
     },
     serverStart: {

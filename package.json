@@ -1,6 +1,6 @@
 {
   "name": "frame-master-plugin-react-to-html",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "main": "index.ts",
   "peerDependencies": {
@@ -8,9 +8,6 @@
     "typescript": "^5",
     "react": ">=18.0.0 <20.0.0",
     "react-dom": ">=18.0.0 <20.0.0"
-  },
-  "dependencies": {
-    "simply-beautiful": "^1.0.1"
   },
   "devDependencies": {
     "@types/bun": "latest",

@@ -17,8 +17,6 @@ export type ReactToHtmlPluginOptions = {
   shellPath: string;
 };
 
-const beautify = require("simply-beautiful");
-
 function filePathToMimeType(filePath: string) {
   const ext = filePath.split(".").pop();
   switch (ext) {
@@ -82,6 +80,7 @@ export default function reactToHtmlPlugin(
   } = _props;
 
   const cwd = process.cwd();
+  const beautify = require("simply-beautiful");
 
   const srcFileRouter = new Bun.FileSystemRouter({
     dir: join(cwd, srcDir),

@@ -7,7 +7,6 @@ import { join } from "path";
 import { cp, mkdir } from "fs/promises";
 import { type MatchedRoute } from "bun";
 import { join as clientJoin } from "frame-master/utils";
-import PrettifyHTML from "html-prettify";
 import packageJson from "./package.json";
 
 export type ReactToHtmlPluginOptions = {
@@ -17,6 +16,8 @@ export type ReactToHtmlPluginOptions = {
   srcDir?: string;
   shellPath: string;
 };
+
+const beautify = require("simply-beautiful");
 
 function filePathToMimeType(filePath: string) {
   const ext = filePath.split(".").pop();
@@ -113,8 +114,6 @@ export default function reactToHtmlPlugin(
 
   let fileRouter: Bun.FileSystemRouter | null = null;
 
-  const PATH_TO_NORMALIZER_DIR = join("_normalize_");
-
   const createFileRouter = () =>
     new Bun.FileSystemRouter({
       dir: join(cwd, outDir),
@@ -127,10 +126,8 @@ export default function reactToHtmlPlugin(
     version: packageJson.version,
     build: {
       buildConfig: () => ({
-        entrypoints: [
-          ...Object.values(srcFileRouter.routes),
-          join(PATH_TO_NORMALIZER_DIR, "normalizer.ts"),
-        ],
+        entrypoints: [...Object.values(srcFileRouter.routes)],
+        root: srcDir,
         throw: false,
         outdir: outDir,
         publicPath: "./",
@@ -199,35 +196,8 @@ export default function reactToHtmlPlugin(
                     contents:
                       process.env.NODE_ENV == "production"
                         ? strContent
-                        : PrettifyHTML(strContent),
+                        : beautify.html(strContent),
                     loader: "html",
-                  };
-                }
-              );
-              build.onResolve(
-                {
-                  filter: pluginRegex({
-                    path: [PATH_TO_NORMALIZER_DIR],
-                    ext: ["ts"],
-                  }),
-                },
-                (args) => {
-                  return {
-                    path: args.path.replace(cwd, ""),
-                    loader: "ts",
-                    namespace: "normalizer",
-                  };
-                }
-              );
-              build.onLoad(
-                {
-                  filter: /.*/,
-                  namespace: "normalizer",
-                },
-                (args) => {
-                  return {
-                    contents: `export default {};`,
-                    loader: "js",
                   };
                 }
               );
@@ -236,31 +206,6 @@ export default function reactToHtmlPlugin(
         ],
       }),
       async afterBuild() {
-        const tmpFileRouter = new Bun.FileSystemRouter({
-          dir: join(cwd, outDir, srcDir),
-          fileExtensions: [".html"],
-          style: "nextjs",
-        });
-
-        const pathnames = Object.keys(tmpFileRouter.routes);
-
-        await Promise.all(
-          pathnames.map(async (pathname) => {
-            return mkdir(join(cwd, outDir, pathname), {
-              recursive: true,
-            }).then(() => {
-              const fileToCopy = tmpFileRouter.routes[pathname]!;
-              const copyTo = join(
-                cwd,
-                outDir,
-                pathname,
-                fileToCopy.split("/").pop()!
-              );
-              return cp(fileToCopy, copyTo);
-            });
-          })
-        );
-
         fileRouter = createFileRouter();
       },
     },

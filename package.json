@@ -10,7 +10,7 @@
     "react-dom": ">=18.0.0 <20.0.0"
   },
   "dependencies": {
-    "html-prettify": "1.0.7"
+    "simply-beautiful": "^1.0.1"
   },
   "devDependencies": {
     "@types/bun": "latest",

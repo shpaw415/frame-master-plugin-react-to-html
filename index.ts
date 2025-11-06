@@ -4,7 +4,6 @@ import { type JSX } from "react";
 import { renderToString } from "react-dom/server";
 import { builder } from "frame-master/build";
 import { join } from "path";
-import { cp, mkdir } from "fs/promises";
 import { type MatchedRoute } from "bun";
 import { join as clientJoin } from "frame-master/utils";
 import packageJson from "./package.json";
@@ -125,7 +124,6 @@ export default function reactToHtmlPlugin(
     build: {
       buildConfig: () => ({
         entrypoints: [...Object.values(srcFileRouter.routes)],
-        root: srcDir,
         throw: false,
         outdir: outDir,
         publicPath: "./",
@@ -139,25 +137,37 @@ export default function reactToHtmlPlugin(
                   loader: "file",
                 };
               });
-              build.onLoad(
+              build.onResolve(
                 {
                   filter: pluginRegex({
                     path: [cwd, srcDir],
                     ext: ["tsx", "jsx"],
                   }),
                 },
-                async (args) => {
+                (args) => {
                   if (
                     args.path?.endsWith("layout.tsx") ||
                     args.path?.endsWith("layout.jsx")
-                  )
-                    return {
-                      contents: "",
-                      loader: "js",
-                    };
-
+                  ) {
+                    return undefined;
+                  }
+                  return {
+                    path: args.path.split(srcDir).pop()!,
+                    namespace: "react-to-html",
+                  };
+                }
+              );
+              build.onLoad(
+                {
+                  filter: pluginRegex({
+                    path: [cwd, srcDir],
+                    ext: ["tsx", "jsx"],
+                  }),
+                  namespace: "react-to-html",
+                },
+                async (args) => {
                   const pageComponent = (
-                    await import(toDevImportPath(args.path))
+                    await import(toDevImportPath(join(cwd, srcDir, args.path)))
                   ).default as () => JSX.Element;
 
                   const pathname = Object.entries(srcFileRouter.routes)

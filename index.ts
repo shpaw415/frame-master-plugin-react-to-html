@@ -8,6 +8,7 @@ import { cp, mkdir } from "fs/promises";
 import { type MatchedRoute } from "bun";
 import { join as clientJoin } from "frame-master/utils";
 import PrettifyHTML from "html-prettify";
+import packageJson from "./package.json";
 
 export type ReactToHtmlPluginOptions = {
   /** default: ".frame-master/build" */
@@ -123,7 +124,7 @@ export default function reactToHtmlPlugin(
 
   return {
     name: "react-to-static-html",
-    version: "1.0.0",
+    version: packageJson.version,
     build: {
       buildConfig: () => ({
         entrypoints: [

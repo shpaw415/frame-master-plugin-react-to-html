@@ -6,6 +6,7 @@ import { join } from "path";
 import { type MatchedRoute } from "bun";
 import { join as clientJoin } from "frame-master/utils";
 import packageJson from "./package.json";
+import { Wrapper } from "./wrapper";
 
 export type ReactToHtmlPluginOptions = {
   /** default: ".frame-master/build" */
@@ -171,22 +172,20 @@ export default function reactToHtmlPlugin(
                     .find(([pathname, filePath]) => filePath == realPath)
                     ?.at(0)!;
 
-                  const layouts = (
-                    await Promise.all(
-                      getRelatedLayoutsMatchForPathname(pathname).map((match) =>
-                        import(toDevImportPath(match.filePath)).then(
-                          (module) => module.default
-                        )
-                      )
-                    )
-                  ).reverse() as Array<
-                    (props: { children: JSX.Element }) => JSX.Element
-                  >;
+                  const layouts = getRelatedLayoutsMatchForPathname(pathname)
+                    .map((match) => toDevImportPath(match.filePath))
+                    .reverse();
 
-                  const PageWrappedInLayouts = layouts.reduce(
-                    (Prev, Curr) => Curr({ children: Prev }),
-                    pageComponent()
-                  );
+                  let currentElement: JSX.Element = await Wrapper({
+                    wrapperPath: realPath,
+                  });
+
+                  for await (const layoutPath of layouts) {
+                    currentElement = await Wrapper({
+                      wrapperPath: layoutPath,
+                      children: currentElement,
+                    });
+                  }
 
                   const Shell = (
                     await import(toDevImportPath(join(cwd, shellPath)))
@@ -195,7 +194,7 @@ export default function reactToHtmlPlugin(
                   }) => JSX.Element;
 
                   const strContent = renderToString(
-                    Shell({ children: PageWrappedInLayouts })
+                    Shell({ children: currentElement })
                   );
                   return {
                     contents: strContent,

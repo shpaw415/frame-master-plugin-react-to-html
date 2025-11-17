@@ -251,11 +251,16 @@ export default function reactToHtmlPlugin(
         if (!file) return;
         req.preventLog();
         const fileMimeType = filePathToMimeType(file.path);
-        req.setResponse(fileMimeType == "text/html" ? file.stream() : file, {
-          headers: {
-            "Content-Type": fileMimeType,
-          },
-        });
+        req.setResponse(
+          fileMimeType == "text/html"
+            ? file.stream()
+            : await file.arrayBuffer(),
+          {
+            headers: {
+              "Content-Type": fileMimeType,
+            },
+          }
+        );
       },
     },
   };

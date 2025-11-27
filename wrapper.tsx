@@ -4,7 +4,7 @@ import { PathProvider } from "./client";
 type WrapperProps = {
   wrapperPath: string;
   children?: JSX.Element;
-  /** current pretty path */
+  /** The current route path (e.g., "/blog" for "/blog/index.tsx") */
   path: string;
 };
 

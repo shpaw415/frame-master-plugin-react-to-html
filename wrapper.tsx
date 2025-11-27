@@ -1,8 +1,11 @@
-import type { JSX } from "react";
+import { type JSX } from "react";
+import { PathProvider } from "./client";
 
 type WrapperProps = {
   wrapperPath: string;
   children?: JSX.Element;
+  /** The current route path (e.g., "/blog" for "/blog/index.tsx") */
+  path: string;
 };
 
 /**
@@ -22,9 +25,13 @@ type WrapperProps = {
  * <Wrapper wrapperPath="./MyWrapper" children={<div>Content</div>} />
  * ```
  */
-export async function Wrapper({ wrapperPath, children }: WrapperProps) {
+export async function Wrapper({ wrapperPath, children, path }: WrapperProps) {
   const { default: Component } = (await import(wrapperPath)) as {
     default: React.FC<{ children?: JSX.Element }>;
   };
-  return <Component>{children}</Component>;
+  return (
+    <PathProvider path={path}>
+      <Component>{children}</Component>
+    </PathProvider>
+  );
 }

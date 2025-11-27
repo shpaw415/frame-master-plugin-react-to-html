@@ -45,6 +45,14 @@ function toDevImportPath(path: string) {
     : path + `?t=${Date.now()}`;
 }
 
+function toPrettyPath(path: string) {
+  if (!path || path === "/") return "/";
+  const parts = path.split("/");
+  parts.pop(); // Remove the last segment (filename)
+  const joined = parts.join("/");
+  return joined || "/";
+}
+
 /**
  * React to Static HTML Plugin for Frame Master
  *
@@ -176,14 +184,18 @@ export default function reactToHtmlPlugin(
                     .map((match) => toDevImportPath(match.filePath))
                     .reverse();
 
+                  const prettyPath = toPrettyPath(args.path);
+
                   let currentElement: JSX.Element = await Wrapper({
                     wrapperPath: realPath,
+                    path: prettyPath,
                   });
 
                   for await (const layoutPath of layouts) {
                     currentElement = await Wrapper({
                       wrapperPath: layoutPath,
                       children: currentElement,
+                      path: prettyPath,
                     });
                   }
 
@@ -238,11 +250,16 @@ export default function reactToHtmlPlugin(
         if (!file) return;
         req.preventLog();
         const fileMimeType = filePathToMimeType(file.path);
-        req.setResponse(fileMimeType == "text/html" ? file.stream() : file, {
-          headers: {
-            "Content-Type": fileMimeType,
-          },
-        });
+        req.setResponse(
+          fileMimeType == "text/html"
+            ? file.stream()
+            : await file.arrayBuffer(),
+          {
+            headers: {
+              "Content-Type": fileMimeType,
+            },
+          }
+        );
       },
     },
   };

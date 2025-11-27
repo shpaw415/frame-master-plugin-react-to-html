@@ -46,12 +46,11 @@ function toDevImportPath(path: string) {
 }
 
 function toPrettyPath(path: string) {
+  if (!path || path === "/") return "/";
   const parts = path.split("/");
-  if (parts.length === 0) return "/";
-  parts.pop();
-  if (parts.length === 0) return "/";
+  parts.pop(); // Remove the last segment (filename)
   const joined = parts.join("/");
-  return joined.startsWith("/") ? joined : "/" + joined;
+  return joined || "/";
 }
 
 /**

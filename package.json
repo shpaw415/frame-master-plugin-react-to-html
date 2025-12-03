@@ -1,6 +1,6 @@
 {
   "name": "frame-master-plugin-react-to-html",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "type": "module",
   "peerDependencies": {
     "frame-master": "^2.0.5",

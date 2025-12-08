@@ -14,6 +14,12 @@ export type ReactToHtmlPluginOptions = {
   /** default: "src/pages" */
   srcDir?: string;
   shellPath: string;
+  /**
+   * Custom file extensions for entrypoints
+   *
+   * @default [".tsx", ".jsx"]
+   */
+  entrypointExtensions?: string[];
 };
 
 function filePathToMimeType(filePath: string) {
@@ -85,6 +91,7 @@ export default function reactToHtmlPlugin(
     srcDir = join("src/pages"),
     outDir = join(".frame-master/build"),
     shellPath,
+    entrypointExtensions = [".tsx", ".jsx"],
   } = _props;
 
   const cwd = process.cwd();
@@ -92,7 +99,7 @@ export default function reactToHtmlPlugin(
   const srcFileRouter = new Bun.FileSystemRouter({
     dir: join(cwd, srcDir),
     style: "nextjs",
-    fileExtensions: [".jsx", ".tsx"],
+    fileExtensions: entrypointExtensions,
   });
 
   const getRelatedLayoutsMatchForPathname = (pathname: string) => {

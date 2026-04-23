@@ -9,7 +9,7 @@ export default {
 	},
 	plugins: [
 		ReactToHTML({
-			verbose: true,
+			verbose: false,
 			asyncFallback: AsyncFallback,
 			srcDir: "src/pages",
 			shellPath: "src/shell.tsx",

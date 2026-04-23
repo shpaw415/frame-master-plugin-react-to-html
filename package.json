@@ -3,7 +3,7 @@
 	"version": "0.3.0",
 	"type": "module",
 	"peerDependencies": {
-		"frame-master": "^2.0.4",
+		"frame-master": "^3.1.1",
 		"typescript": "^5.9.3",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0"

@@ -41,7 +41,7 @@ function toDevImportPath(path: string) {
 function toPrettyPath(path: string) {
 	const pathNoExt = path.replace(/\.(jsx|tsx)$/, "");
 	if (pathNoExt.endsWith("/index")) {
-		return pathNoExt.slice(0, -"/index".length);
+		return pathNoExt.slice(0, -5);
 	} else {
 		return pathNoExt;
 	}

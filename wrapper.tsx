@@ -2,6 +2,7 @@ import { isAsyncFunction } from "node:util/types";
 import type { JSX } from "react";
 import type { ReactToHtmlPluginOptions } from "./";
 import { PathProvider } from "./client";
+
 type WrapperProps = {
 	wrapperPath: string;
 	children?: JSX.Element;

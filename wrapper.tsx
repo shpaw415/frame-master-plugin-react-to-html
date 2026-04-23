@@ -1,11 +1,13 @@
-import { type JSX } from "react";
+import { isAsyncFunction } from "node:util/types";
+import type { JSX } from "react";
+import type { ReactToHtmlPluginOptions } from "./";
 import { PathProvider } from "./client";
-
 type WrapperProps = {
-  wrapperPath: string;
-  children?: JSX.Element;
-  /** current pretty path */
-  path: string;
+	wrapperPath: string;
+	children?: JSX.Element;
+	/** current pretty path */
+	path: string;
+	pluginProps: ReactToHtmlPluginOptions;
 };
 
 /**
@@ -25,13 +27,39 @@ type WrapperProps = {
  * <Wrapper wrapperPath="./MyWrapper" children={<div>Content</div>} />
  * ```
  */
-export async function Wrapper({ wrapperPath, children, path }: WrapperProps) {
-  const { default: Component } = (await import(wrapperPath)) as {
-    default: React.FC<{ children?: JSX.Element }>;
-  };
-  return (
-    <PathProvider path={path}>
-      <Component>{children}</Component>
-    </PathProvider>
-  );
+export async function Wrapper({
+	wrapperPath,
+	children,
+	path,
+	pluginProps,
+}: WrapperProps) {
+	const { default: Component } = (await import(wrapperPath)) as {
+		default: React.FC<{ children?: JSX.Element }>;
+	};
+
+	const ParsedComponent =
+		(await pluginProps.parseComponent?.(Component)) ?? Component;
+
+	const parsedIsAsync = isAsyncFunction(ParsedComponent);
+
+	if (pluginProps.verbose) {
+		console.log(`[React-to-html] > Parsing component:`, {
+			path,
+			Component,
+			children,
+			parsedIsAsync,
+		});
+	}
+
+	return (
+		<PathProvider path={path}>
+			{parsedIsAsync ? (
+				<pluginProps.asyncFallback path={path}>
+					{children}
+				</pluginProps.asyncFallback>
+			) : (
+				<ParsedComponent path={path}>{children}</ParsedComponent>
+			)}
+		</PathProvider>
+	);
 }

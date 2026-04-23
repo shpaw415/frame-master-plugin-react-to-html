@@ -1,63 +1,50 @@
+import { join } from "node:path";
+import type { MatchedRoute } from "bun";
 import type { FrameMasterPlugin } from "frame-master/plugin";
-import { type JSX } from "react";
-import { renderToString } from "react-dom/server";
-import { builder } from "frame-master/build";
-import { join } from "path";
-import { type MatchedRoute } from "bun";
 import { join as clientJoin } from "frame-master/utils";
+import type React from "react";
+import type { JSX } from "react";
+import { renderToString } from "react-dom/server";
 import packageJson from "./package.json";
 import { Wrapper } from "./wrapper";
 
+const _AsyncFunction = (async () => {}).constructor;
+export type AsyncFunction = typeof _AsyncFunction;
 export type ReactToHtmlPluginOptions = {
-  /** default: ".frame-master/build" */
-  outDir?: string;
-  /** default: "src/pages" */
-  srcDir?: string;
-  shellPath: string;
-  /**
-   * Custom file extensions for entrypoints
-   *
-   * @default [".tsx", ".jsx"]
-   */
-  entrypointExtensions?: string[];
+	/** default: "src/pages" */
+	srcDir?: string;
+	/**
+	 * path to the shell/layout wrapper component. This component will be used to wrap all page components, allowing you to define a common layout for your pages. The shell component should accept a `children` prop, which will be the rendered page component. For example, if you have a `src/pages/shell.tsx` file that exports a React component as default, you can set `shellPath` to "src/pages/shell.tsx". Make sure to provide the correct path to your shell component relative to the project root.
+	 */
+	shellPath: string;
+	/**
+	 * Custom file extensions for entrypoints
+	 *
+	 * @default [".tsx", ".jsx"]
+	 */
+	entrypointExtensions?: string[];
+	parseComponent?: (
+		component: React.FC<{ children?: JSX.Element }>,
+	) =>
+		| React.FC<{ children?: JSX.Element; path: string }>
+		| Promise<React.FC<{ children?: JSX.Element; path: string }>>;
+	asyncFallback: React.FC<{ children?: JSX.Element; path: string }>;
+	verbose?: boolean;
 };
 
-function filePathToMimeType(filePath: string) {
-  const ext = filePath.split(".").pop();
-  switch (ext) {
-    case "html":
-      return "text/html";
-    case "js":
-      return "application/javascript";
-    case "css":
-      return "text/css";
-    case "json":
-      return "application/json";
-    case "png":
-      return "image/png";
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "svg":
-      return "image/svg+xml";
-    default:
-      return "application/octet-stream";
-  }
-}
-
 function toDevImportPath(path: string) {
-  return process.env.NODE_ENV == "production"
-    ? path
-    : path + `?t=${Date.now()}`;
+	return process.env.NODE_ENV === "production"
+		? path
+		: `${path}?t=${Date.now()}`;
 }
 
 function toPrettyPath(path: string) {
-  const parts = path.split("/");
-  if (parts.length === 0) return "/";
-  parts.pop();
-  if (parts.length === 0) return "/";
-  const joined = parts.join("/");
-  return joined.startsWith("/") ? joined : "/" + joined;
+	const pathNoExt = path.replace(/\.(jsx|tsx)$/, "");
+	if (pathNoExt.endsWith("/index")) {
+		return pathNoExt.slice(0, -"/index".length);
+	} else {
+		return pathNoExt;
+	}
 }
 
 /**
@@ -85,190 +72,140 @@ function toPrettyPath(path: string) {
  * ```
  */
 export default function reactToHtmlPlugin(
-  _props: ReactToHtmlPluginOptions
+	_props: ReactToHtmlPluginOptions,
 ): FrameMasterPlugin {
-  const {
-    srcDir = join("src/pages"),
-    outDir = join(".frame-master/build"),
-    shellPath,
-    entrypointExtensions = [".tsx", ".jsx"],
-  } = _props;
+	const {
+		srcDir = join("src/pages"),
+		shellPath,
+		entrypointExtensions = [".tsx", ".jsx"],
+	} = _props;
 
-  const cwd = process.cwd();
+	const cwd = process.cwd();
 
-  const srcFileRouter = new Bun.FileSystemRouter({
-    dir: join(cwd, srcDir),
-    style: "nextjs",
-    fileExtensions: entrypointExtensions,
-  });
+	const srcFileRouter = new Bun.FileSystemRouter({
+		dir: join(cwd, srcDir),
+		style: "nextjs",
+		fileExtensions: entrypointExtensions,
+	});
 
-  const getRelatedLayoutsMatchForPathname = (pathname: string) => {
-    const paths = pathname ? pathname.split("/").filter(Boolean) : [];
-    const relatedLayouts: MatchedRoute[] = [];
+	const getRelatedLayoutsMatchForPathname = (pathname: string) => {
+		const paths = pathname ? pathname.split("/").filter(Boolean) : [];
+		const relatedLayouts: MatchedRoute[] = [];
 
-    const testBasePath = srcFileRouter.match("/layout");
-    if (testBasePath) relatedLayouts.push(testBasePath);
+		const testBasePath = srcFileRouter.match("/layout");
+		if (testBasePath) relatedLayouts.push(testBasePath);
 
-    if (paths.length === 0) return relatedLayouts;
-    let currentPathname = "";
-    for (const path of paths) {
-      const testPathname = clientJoin(currentPathname, path);
-      const layoutPathToTest = "/" + clientJoin(testPathname, "layout");
-      const matched = srcFileRouter.match(layoutPathToTest);
+		if (paths.length === 0) return relatedLayouts;
+		let currentPathname = "";
+		for (const path of paths) {
+			const testPathname = clientJoin(currentPathname, path);
+			const layoutPathToTest = `/${clientJoin(testPathname, "layout")}`;
+			const matched = srcFileRouter.match(layoutPathToTest);
 
-      currentPathname = testPathname;
+			currentPathname = testPathname;
 
-      if (!matched) continue;
-      relatedLayouts.push(matched);
-    }
+			if (!matched) continue;
+			relatedLayouts.push(matched);
+		}
 
-    return relatedLayouts;
-  };
+		return relatedLayouts;
+	};
 
-  let fileRouter: Bun.FileSystemRouter | null = null;
+	return {
+		name: "react-to-static-html",
+		version: packageJson.version,
+		build: {
+			buildConfig: () => ({
+				entrypoints: [
+					...Object.values(srcFileRouter.routes)
+						.filter(
+							(filePath) =>
+								!filePath.endsWith("layout.tsx") &&
+								!filePath.endsWith("layout.jsx"),
+						)
+						.map(
+							(filePath) =>
+								`${filePath.split(srcDir).pop() as string}?entrypoint=true`,
+						),
+				],
+				plugins: [
+					{
+						name: "react-to-html-transformer",
+						setup(build) {
+							build.onLoad({ filter: /\.css$/ }, async (args) => {
+								return {
+									contents: await Bun.file(args.path).text(),
+									loader: "file",
+								};
+							});
+							build.onResolve(
+								{
+									filter: /.*\?entrypoint=true$/,
+								},
+								(args) => {
+									return {
+										path: args.path.split("?entrypoint=true").shift() as string,
+										namespace: "src-page",
+									};
+								},
+							);
+							build.onLoad(
+								{
+									filter: /.*/,
+									namespace: "src-page",
+								},
+								async (args) => {
+									const realPath = join(cwd, srcDir, args.path);
+									/*
+									const pageComponent = (
+										await import(toDevImportPath(realPath))
+									).default as () => JSX.Element;
+                  */
 
-  const createFileRouter = () =>
-    new Bun.FileSystemRouter({
-      dir: join(cwd, outDir),
-      style: "nextjs",
-      fileExtensions: [".html"],
-    });
+									const pathname = Object.entries(srcFileRouter.routes)
+										.find(([_pathname, filePath]) => filePath === realPath)
+										?.at(0) as string;
 
-  return {
-    name: "react-to-static-html",
-    version: packageJson.version,
-    build: {
-      buildConfig: () => ({
-        entrypoints: [
-          ...Object.values(srcFileRouter.routes)
-            .filter(
-              (filePath) =>
-                !filePath.endsWith("layout.tsx") &&
-                !filePath.endsWith("layout.jsx")
-            )
-            .map(
-              (filePath) => filePath.split(srcDir).pop()! + "?entrypoint=true"
-            ),
-        ],
-        throw: false,
-        outdir: outDir,
-        plugins: [
-          {
-            name: "react-to-html-transformer",
-            setup(build) {
-              build.onLoad({ filter: /\.css$/ }, async (args) => {
-                return {
-                  contents: await Bun.file(args.path).text(),
-                  loader: "file",
-                };
-              });
-              build.onResolve(
-                {
-                  filter: /.*\?entrypoint=true$/,
-                },
-                (args) => {
-                  return {
-                    path: args.path.split("?entrypoint=true").shift()!,
-                    namespace: "src-page",
-                  };
-                }
-              );
-              build.onLoad(
-                {
-                  filter: /.*/,
-                  namespace: "src-page",
-                },
-                async (args) => {
-                  const realPath = join(cwd, srcDir, args.path);
-                  const pageComponent = (
-                    await import(toDevImportPath(realPath))
-                  ).default as () => JSX.Element;
+									const layouts = getRelatedLayoutsMatchForPathname(pathname)
+										.map((match) => toDevImportPath(match.filePath))
+										.reverse();
 
-                  const pathname = Object.entries(srcFileRouter.routes)
-                    .find(([pathname, filePath]) => filePath == realPath)
-                    ?.at(0)!;
+									const prettyPath = toPrettyPath(args.path);
 
-                  const layouts = getRelatedLayoutsMatchForPathname(pathname)
-                    .map((match) => toDevImportPath(match.filePath))
-                    .reverse();
+									let currentElement: JSX.Element = await Wrapper({
+										wrapperPath: realPath,
+										path: prettyPath,
+										pluginProps: _props,
+									});
 
-                  const prettyPath = toPrettyPath(args.path);
+									for await (const layoutPath of layouts) {
+										currentElement = await Wrapper({
+											wrapperPath: layoutPath,
+											children: currentElement,
+											path: prettyPath,
+											pluginProps: _props,
+										});
+									}
 
-                  let currentElement: JSX.Element = await Wrapper({
-                    wrapperPath: realPath,
-                    path: prettyPath,
-                  });
+									const Shell = (
+										await import(toDevImportPath(join(cwd, shellPath)))
+									).default as (props: {
+										children: JSX.Element;
+									}) => JSX.Element;
 
-                  for await (const layoutPath of layouts) {
-                    currentElement = await Wrapper({
-                      wrapperPath: layoutPath,
-                      children: currentElement,
-                      path: prettyPath,
-                    });
-                  }
-
-                  const Shell = (
-                    await import(toDevImportPath(join(cwd, shellPath)))
-                  ).default as (props: {
-                    children: JSX.Element;
-                  }) => JSX.Element;
-
-                  const strContent = renderToString(
-                    Shell({ children: currentElement })
-                  );
-                  return {
-                    contents: strContent,
-                    loader: "html",
-                  };
-                }
-              );
-            },
-          },
-        ],
-      }),
-      async afterBuild(_, result) {
-        fileRouter = createFileRouter();
-      },
-    },
-    serverStart: {
-      async main() {
-        await builder?.build();
-        fileRouter = createFileRouter();
-      },
-    },
-    router: {
-      async request(req) {
-        if (req.isResponseSetted()) return;
-        fileRouter?.reload();
-        const pathname = req.URL.pathname;
-        const filePath = join(cwd, outDir, pathname);
-        if (builder?.isBuilding()) await builder.awaitBuildFinish();
-
-        const match = fileRouter?.match(pathname);
-        if (match) {
-          req.setResponse(Bun.file(match.filePath).stream(), {
-            headers: {
-              "Content-Type": "text/html",
-            },
-          });
-          return;
-        }
-
-        const file = builder?.outputs?.find((out) => out.path === filePath);
-        if (!file) return;
-        req.preventLog();
-        const fileMimeType = filePathToMimeType(file.path);
-        req.setResponse(
-          fileMimeType == "text/html"
-            ? file.stream()
-            : await file.arrayBuffer(),
-          {
-            headers: {
-              "Content-Type": fileMimeType,
-            },
-          }
-        );
-      },
-    },
-  };
+									const strContent = renderToString(
+										Shell({ children: currentElement }),
+									);
+									return {
+										contents: strContent,
+										loader: "html",
+									};
+								},
+							);
+						},
+					},
+				],
+			}),
+		},
+	};
 }

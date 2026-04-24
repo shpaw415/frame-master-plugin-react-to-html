@@ -137,18 +137,8 @@ export default function reactToHtmlPlugin(
 					return `${entry.replace(ext, ".html")}?react-to-html=${ext.slice(1)}`;
 				});
 
-				const fileList = Object.fromEntries(
-					await Promise.all(
-						relativeRealEntries.map(async (entry) => [
-							entry,
-							await Bun.file(join(cwd, srcDir, entry)).text(),
-						]),
-					),
-				);
-
 				return {
 					entrypoints: htmlEntries,
-					files: fileList,
 					plugins: [
 						{
 							name: "react-to-html-transformer",

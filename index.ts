@@ -101,13 +101,14 @@ export default function reactToHtmlPlugin(
 		const relatedLayouts: MatchedRoute[] = [];
 
 		const testBasePath = srcFileRouter.match("/layout");
-		if (testBasePath) relatedLayouts.push(testBasePath);
+		if (testBasePath && testBasePath.name.endsWith("layout"))
+			relatedLayouts.push(testBasePath);
 
 		if (paths.length === 0) return relatedLayouts;
 		let currentPathname = "";
 		for (const path of paths) {
-			const testPathname = clientJoin(currentPathname, path);
-			const layoutPathToTest = `/${clientJoin(testPathname, "layout")}`;
+			const testPathname = join(currentPathname, path);
+			const layoutPathToTest = `/${join(testPathname, "layout")}`;
 			const matched = srcFileRouter.match(layoutPathToTest);
 
 			currentPathname = testPathname;
@@ -115,7 +116,6 @@ export default function reactToHtmlPlugin(
 			if (!matched) continue;
 			relatedLayouts.push(matched);
 		}
-
 		return relatedLayouts;
 	};
 

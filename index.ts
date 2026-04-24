@@ -189,7 +189,7 @@ export default function reactToHtmlPlugin(
 											.reverse();
 
 										const prettyPath = toPrettyPath(
-											relative(join(cwd, srcDir), args.path),
+											relative(join(cwd, srcDir), realPath),
 										);
 
 										let currentElement: JSX.Element = await Wrapper({

@@ -127,23 +127,28 @@ export default function reactToHtmlPlugin(
 		},
 		build: {
 			buildConfig: async () => {
-				const entries = routeToRelative(srcFileRouter, srcDir).filter(
-					(fp) => !fp.match(/layout\.(jsx|tsx)$/),
+				const relativeRealEntries = routeToRelative(
+					srcFileRouter,
+					srcDir,
+				).filter((fp) => !fp.match(/layout\.(jsx|tsx)$/));
+
+				const htmlEntries = relativeRealEntries.map((entry) => {
+					const ext = entry.match(/\.(jsx|tsx)$/)?.[0] as string;
+					return `${entry.replace(ext, ".html")}?react-to-html=${ext.slice(1)}`;
+				});
+
+				const fileList = Object.fromEntries(
+					await Promise.all(
+						relativeRealEntries.map(async (entry) => [
+							entry,
+							await Bun.file(join(cwd, srcDir, entry)).text(),
+						]),
+					),
 				);
 
 				return {
-					entrypoints: entries.map((entry) => {
-						const ext = entry.match(/\.(jsx|tsx)$/)?.[0] as string;
-						return `${entry.replace(ext, ".html")}?react-to-html=${ext.slice(1)}`;
-					}),
-					files: Object.fromEntries(
-						await Promise.all(
-							entries.map(async (entry) => [
-								entry,
-								await Bun.file(join(cwd, srcDir, entry)).text(),
-							]),
-						),
-					),
+					entrypoints: htmlEntries,
+					files: fileList,
 					plugins: [
 						{
 							name: "react-to-html-transformer",
@@ -154,37 +159,36 @@ export default function reactToHtmlPlugin(
 										loader: "file",
 									};
 								});
+
 								build.onResolve(
 									{
 										filter: /.*\?react-to-html=.*$/,
 									},
 									(args) => {
-										const url = new URL(args.path, "file://");
-										const realExt = url.searchParams.get(
-											"react-to-html",
-										) as string;
-
-										const realPath = join(
-											cwd,
-											srcDir,
-											args.path
-												.replace(/\?react-to-html=.*$/, "")
-												.replace(/\.html$/, `.${realExt}`),
-										);
-
 										return {
-											path: realPath,
-											namespace: "src-page",
+											path: args.path,
+											namespace: "react-to-html-src-page",
 										};
 									},
 								);
 								build.onLoad(
 									{
-										filter: /.*/,
-										namespace: "src-page",
+										filter: /.*\?react-to-html=.*$/,
+										namespace: "react-to-html-src-page",
 									},
 									async (args) => {
-										const realPath = args.path;
+										const url = new URL(args.path, "file://");
+										const realExt = url.searchParams.get(
+											"react-to-html",
+										) as string;
+										const realPath = join(
+											cwd,
+											srcDir,
+											args.path.replace(
+												`.html?react-to-html=${realExt}`,
+												`.${realExt}`,
+											),
+										);
 
 										const pathname = Object.entries(srcFileRouter.routes)
 											.find(([_pathname, filePath]) => filePath === realPath)

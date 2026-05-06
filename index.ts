@@ -132,14 +132,18 @@ export default function reactToHtmlPlugin(
 					srcDir,
 				).filter((fp) => !fp.match(/layout\.(jsx|tsx)$/));
 
-				const htmlEntries = relativeRealEntries.map((entry) => {
-					const ext = entry.match(
-						new RegExp(
-							`\\.(${entrypointExtensions.map((ext) => ext.slice(1)).join("|")})$`,
-						),
-					)?.[0] as string;
-					return `${entry.replace(ext, ".html")}?react-to-html=${ext.slice(1)}`;
-				});
+				const htmlEntries = relativeRealEntries
+					.map((entry) => {
+						const ext = entry.match(
+							new RegExp(
+								`\\.(${entrypointExtensions.map((ext) => ext.slice(1)).join("|")})$`,
+							),
+						)?.[0] as string;
+
+						if (entry.match(/\[[^\]]+\]/)) return null; // skip dynamic routes for static HTML generation
+						return `${entry.replace(ext, ".html")}?react-to-html=${ext.slice(1)}`;
+					})
+					.filter((entry) => entry !== null);
 
 				return {
 					entrypoints: htmlEntries,

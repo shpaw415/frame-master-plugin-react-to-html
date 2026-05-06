@@ -13,6 +13,7 @@ export default {
 			asyncFallback: AsyncFallback,
 			srcDir: "src/pages",
 			shellPath: "src/shell.tsx",
+			exclude: [/loading\.(tsx|jsx)$/, /404\.(tsx|jsx)$/],
 		}) as FrameMasterPlugin,
 	],
 } satisfies FrameMasterConfig;

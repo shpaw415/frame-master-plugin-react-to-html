@@ -29,6 +29,15 @@ export type ReactToHtmlPluginOptions = {
 		| React.FC<{ children?: JSX.Element; path: string }>
 		| Promise<React.FC<{ children?: JSX.Element; path: string }>>;
 	asyncFallback: React.FC<{ children?: JSX.Element; path: string }>;
+
+	/**
+	 * Array of regular expressions to exclude certain files from being treated as entrypoints. This can be useful for excluding specific files or patterns that you don't want to be processed by the plugin, such as loading states, error pages, or any other components that should not be rendered as standalone HTML pages. For example, you might want to exclude files like `loading.tsx` or `404.tsx` by adding `/loading\.(tsx|jsx)$/` and `/404\.(tsx|jsx)$/` to the `exclude` array.
+	 */
+	exclude?: RegExp[];
+
+	/**
+	 * Whether to enable verbose logging for debugging purposes. When set to true, the plugin will log detailed information about the build process, including matched routes, applied layouts, and any errors encountered during rendering. This can be helpful for troubleshooting issues with route matching or layout composition.
+	 */
 	verbose?: boolean;
 };
 
@@ -86,7 +95,15 @@ export default function reactToHtmlPlugin(
 		srcDir = join("src/pages"),
 		shellPath,
 		entrypointExtensions = [".tsx", ".jsx"],
+		exclude = [],
+		verbose = false,
 	} = _props;
+
+	const log = (...args: any[]) => {
+		if (verbose) {
+			console.log("[react-to-static-html]", ...args);
+		}
+	};
 
 	const cwd = process.cwd();
 
@@ -130,7 +147,11 @@ export default function reactToHtmlPlugin(
 				const relativeRealEntries = routeToRelative(
 					srcFileRouter,
 					srcDir,
-				).filter((fp) => !fp.match(/layout\.(jsx|tsx)$/));
+				).filter((fp) =>
+					[/layout\.(jsx|tsx)$/, /\[[^\]]+\]/, ...exclude].every(
+						(regex) => !fp.match(regex),
+					),
+				);
 
 				const htmlEntries = relativeRealEntries
 					.map((entry) => {
@@ -140,10 +161,11 @@ export default function reactToHtmlPlugin(
 							),
 						)?.[0] as string;
 
-						if (entry.match(/\[[^\]]+\]/)) return null; // skip dynamic routes for static HTML generation
 						return `${entry.replace(ext, ".html")}?react-to-html=${ext.slice(1)}`;
 					})
 					.filter((entry) => entry !== null);
+
+				log("Matched entrypoints:", htmlEntries);
 
 				return {
 					entrypoints: htmlEntries,

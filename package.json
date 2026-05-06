@@ -1,6 +1,6 @@
 {
 	"name": "frame-master-plugin-react-to-html",
-	"version": "1.0.4",
+	"version": "1.0.5",
 	"type": "module",
 	"peerDependencies": {
 		"frame-master": "^3.1.1",
@@ -16,6 +16,7 @@
 	"exports": {
 		".": "./index.ts",
 		"./plugin": "./index.ts",
-		"./hooks": "./utils.ts"
+		"./hooks": "./utils.ts",
+		"./utils": "./src/utils.ts"
 	}
 }

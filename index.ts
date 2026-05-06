@@ -133,7 +133,11 @@ export default function reactToHtmlPlugin(
 				).filter((fp) => !fp.match(/layout\.(jsx|tsx)$/));
 
 				const htmlEntries = relativeRealEntries.map((entry) => {
-					const ext = entry.match(/\.(jsx|tsx)$/)?.[0] as string;
+					const ext = entry.match(
+						new RegExp(
+							`\\.(${entrypointExtensions.map((ext) => ext.slice(1)).join("|")})$`,
+						),
+					)?.[0] as string;
 					return `${entry.replace(ext, ".html")}?react-to-html=${ext.slice(1)}`;
 				});
 
